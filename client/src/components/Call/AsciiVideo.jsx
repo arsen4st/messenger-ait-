@@ -1,6 +1,5 @@
-// Enhanced real-time ASCII video renderer inspired by glyphcast
-// Modes: 'grayscale' | 'color' | 'matrix' | 'braille' | 'blocks' | 'binary'
-// Features: adaptive brightness, contrast boost, better charset ramps
+// Optimized real-time ASCII video renderer with improved FPS
+// Uses requestAnimationFrame, pre-allocated buffers, and optimized DOM updates
 
 import { useEffect, useRef } from 'react';
 
@@ -42,13 +41,15 @@ function AsciiVideo({
   fps = 18,
   mirrored = false,
   glitchProbability = 0,
-  contrast = 1.2,              // NEW: contrast boost (1.0 = none, 1.5 = high)
+  contrast = 1.2,
   className = '',
   style,
 }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const preRef = useRef(null);
+  const rafRef = useRef(null);
+  const lastFrameTimeRef = useRef(0);
 
   useEffect(() => {
     if (!stream) {
@@ -79,12 +80,27 @@ function AsciiVideo({
     const sampleH = mode === 'braille' ? rows * 4 : rows;
     c.width = sampleW;
     c.height = sampleH;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
+    const ctx = c.getContext('2d', {
+      willReadFrequently: true,
+      alpha: false, // Optimization: no alpha channel needed
+    });
 
-    let intervalId;
+    const frameInterval = 1000 / fps;
+    const useColor = mode === 'color';
 
-    const draw = () => {
+    // Pre-allocate string array for better performance
+    const lines = new Array(rows);
+
+    const draw = (timestamp) => {
+      rafRef.current = requestAnimationFrame(draw);
+
+      // Throttle to target FPS
+      if (timestamp - lastFrameTimeRef.current < frameInterval) return;
+      lastFrameTimeRef.current = timestamp;
+
       if (!v.videoWidth) return;
+
+      // Draw video to canvas
       ctx.save();
       if (mirrored) {
         ctx.translate(sampleW, 0);
@@ -98,15 +114,15 @@ function AsciiVideo({
       catch { return; }
       const data = img.data;
 
-      let html = '';
-
       if (mode === 'braille') {
-        // Braille mode with improved threshold
+        // Braille mode - optimized
         const DOT = [
           [0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80],
         ];
-        const threshold = 128; // Improved from 110
+        const threshold = 128;
+
         for (let by = 0; by < rows; by++) {
+          let line = '';
           for (let bx = 0; bx < cols; bx++) {
             let bits = 0;
             for (let dy = 0; dy < 4; dy++) {
@@ -120,20 +136,18 @@ function AsciiVideo({
             }
             let ch = String.fromCharCode(0x2800 + bits);
             if (glitchProbability > 0 && Math.random() < glitchProbability) ch = '█';
-            html += ch;
+            line += ch;
           }
-          html += '\n';
+          lines[by] = line;
         }
-        pre.textContent = html;
+        pre.textContent = lines.join('\n');
         return;
       }
 
-      // Enhanced rendering for all other modes
-      const useColor = mode === 'color';
-
       if (useColor) {
-        // Color mode with improved brightness handling
+        // Color mode - build HTML in chunks for better performance
         for (let y = 0; y < rows; y++) {
+          let line = '';
           for (let x = 0; x < cols; x++) {
             const i = (y * cols + x) * 4;
             const r = data[i], g = data[i + 1], b = data[i + 2];
@@ -148,31 +162,33 @@ function AsciiVideo({
             const gg = Math.min(255, Math.round(g * boost));
             const bb = Math.min(255, Math.round(b * boost));
 
-            html += `<span style="color:rgb(${rr},${gg},${bb})">${escapeHtml(ch)}</span>`;
+            line += `<span style="color:rgb(${rr},${gg},${bb})">${escapeHtml(ch)}</span>`;
           }
-          html += '\n';
+          lines[y] = line;
         }
-        pre.innerHTML = html;
+        pre.innerHTML = lines.join('\n');
       } else {
-        // Grayscale/matrix/blocks/binary — plain text (faster)
+        // Grayscale/matrix/blocks/binary - fastest path
         for (let y = 0; y < rows; y++) {
+          let line = '';
           for (let x = 0; x < cols; x++) {
             const i = (y * cols + x) * 4;
             const lum = getLuminance(data[i], data[i + 1], data[i + 2]);
 
             let ch = pickChar(lum, charset, contrast);
             if (glitchProbability > 0 && Math.random() < glitchProbability) ch = '█';
-            html += ch;
+            line += ch;
           }
-          html += '\n';
+          lines[y] = line;
         }
-        pre.textContent = html;
+        pre.textContent = lines.join('\n');
       }
     };
 
-    intervalId = setInterval(draw, Math.max(20, 1000 / fps));
+    rafRef.current = requestAnimationFrame(draw);
+
     return () => {
-      clearInterval(intervalId);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       v.srcObject = null;
     };
   }, [stream, mode, cols, rows, fps, mirrored, glitchProbability, contrast]);
@@ -189,6 +205,7 @@ function AsciiVideo({
           fontSize: 'clamp(6px, 0.95vw, 12px)',
           fontFamily: '"Courier New", monospace',
           textShadow: mode === 'color' ? 'none' : '0 0 4px var(--c-fg)',
+          willChange: 'contents', // Hint browser for optimization
         }}
       />
     </div>
