@@ -1,0 +1,919 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN TOKENS — Matrix (default) + Amber (alt)
+   ============================================================ */
+:root,
+[data-theme="matrix"] {
+  --c-fg:      #00FF41;
+  --c-fg-dim:  #00A82B;
+  --c-bg:      #0D0D0D;
+  --c-card:    #1A1A1A;
+  --c-accent:  #003B00;
+  --c-muted:   #265426;
+  --c-border:  #00FF41;
+  --c-warn:    #FFB000;
+  --c-danger:  #FF3939;
+  --c-info:    #00D9FF;
+  --c-cursor-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="18"><rect width="10" height="18" fill="%2300FF41"/></svg>');
+}
+
+[data-theme="amber"] {
+  --c-fg:      #FF6600;
+  --c-fg-dim:  #B34700;
+  --c-bg:      #0A0A00;
+  --c-card:    #150F00;
+  --c-accent:  #3B1F00;
+  --c-muted:   #663300;
+  --c-border:  #FF6600;
+  --c-warn:    #FFCC00;
+  --c-danger:  #FF3939;
+  --c-info:    #FFB000;
+  --c-cursor-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="18"><rect width="10" height="18" fill="%23FF6600"/></svg>');
+}
+
+[data-theme="white"] {
+  --c-fg:      #F2F2F2;
+  --c-fg-dim:  #9A9A9A;
+  --c-bg:      #0D0D0D;
+  --c-card:    #1A1A1A;
+  --c-accent:  #2E2E2E;
+  --c-muted:   #5A5A5A;
+  --c-border:  #F2F2F2;
+  --c-warn:    #FFB000;
+  --c-danger:  #FF5555;
+  --c-info:    #66D9FF;
+  --c-cursor-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="18"><rect width="10" height="18" fill="%23F2F2F2"/></svg>');
+}
+
+[data-theme="cyan"] {
+  --c-fg:      #00E5FF;
+  --c-fg-dim:  #0095AD;
+  --c-bg:      #00141A;
+  --c-card:    #00262F;
+  --c-accent:  #003B47;
+  --c-muted:   #1C6B79;
+  --c-border:  #00E5FF;
+  --c-warn:    #FFC857;
+  --c-danger:  #FF4D6D;
+  --c-info:    #7DF9FF;
+  --c-cursor-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="18"><rect width="10" height="18" fill="%2300E5FF"/></svg>');
+}
+
+/* ============================================================
+   BASE — Courier New everywhere, no rounding, ASCII cursor
+   ============================================================ */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-radius: 0 !important;          /* zero rounding everywhere */
+    font-family: "Courier New", "Courier", monospace !important;
+  }
+
+  html, body {
+    background-color: var(--c-bg);
+    color: var(--c-fg);
+    font-family: "Courier New", "Courier", monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    -webkit-font-smoothing: none;          /* crisp pixels */
+    text-rendering: geometricPrecision;
+    cursor: var(--c-cursor-svg) 0 0, default;
+  }
+
+  /* Block cursor on all interactive elements */
+  a, button, [role="button"], input[type="submit"], input[type="button"] {
+    cursor: var(--c-cursor-svg) 0 0, pointer;
+  }
+
+  /* Text-input caret styled as block via colored caret */
+  input, textarea {
+    caret-color: var(--c-fg);
+    cursor: var(--c-cursor-svg) 0 0, text;
+  }
+
+  #root {
+    @apply w-full h-screen overflow-hidden relative;
+    /* light, steady CRT grade — kept even when flicker is disabled */
+    filter: brightness(0.96) contrast(1.05);
+    animation: crt-flicker 10s infinite;
+  }
+
+  ::selection {
+    background-color: var(--c-fg);
+    color: var(--c-bg);
+  }
+
+  *:focus { outline: none; }
+
+  /* Make all images render as crisp pixels (retro CRT vibe) */
+  img { image-rendering: pixelated; }
+}
+
+/* ============================================================
+   COMPONENTS — reusable utility classes
+   ============================================================ */
+@layer components {
+  /* ---------- Cleaner version: dotted border + corner spans ----- */
+  /* Use 1px solid border + corner glyphs via .ascii-corners > spans */
+  .tui-box {
+    position: relative;
+    border: 1px solid var(--c-fg);
+    background-color: var(--c-card);
+  }
+  .tui-box > .corner {
+    position: absolute;
+    color: var(--c-fg);
+    background: var(--c-bg);
+    line-height: 1;
+    padding: 0 1px;
+    font-size: inherit;
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
+  }
+  .tui-box > .corner.tl { top: -0.55em; left: -0.3ch; }
+  .tui-box > .corner.tr { top: -0.55em; right: -0.3ch; }
+  .tui-box > .corner.bl { bottom: -0.55em; left: -0.3ch; }
+  .tui-box > .corner.br { bottom: -0.55em; right: -0.3ch; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5ch;
+    padding: 0.25em 1ch;
+    color: var(--c-fg);
+    background: transparent;
+    border: 1px solid var(--c-fg);
+    cursor: var(--c-cursor-svg) 0 0, pointer;
+    transition: background-color 0.05s, color 0.05s;
+  }
+  .btn:hover { background-color: var(--c-fg); color: var(--c-bg); }
+  .btn:active { background-color: var(--c-fg-dim); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Bracketed text button [ TEXT ] — primary alias .btn-tui */
+  .btn-bracket,
+  .btn-tui {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25ch;
+    color: var(--c-fg-dim);
+    background: transparent;
+    border: none;
+    transition: color 0.05s;
+    cursor: var(--c-cursor-svg) 0 0, pointer;
+  }
+  .btn-bracket::before, .btn-tui::before { content: '['; color: var(--c-fg-dim); }
+  .btn-bracket::after,  .btn-tui::after  { content: ']'; color: var(--c-fg-dim); }
+  .btn-bracket:hover, .btn-tui:hover { color: var(--c-fg); }
+  .btn-bracket:hover::before, .btn-bracket:hover::after,
+  .btn-tui:hover::before, .btn-tui:hover::after { color: var(--c-fg); }
+
+  /* Solid filled action button */
+  .btn-solid {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5ch;
+    padding: 0.3em 1ch;
+    background: var(--c-fg);
+    color: var(--c-bg);
+    font-weight: 700;
+    border: 1px solid var(--c-fg);
+    cursor: var(--c-cursor-svg) 0 0, pointer;
+    transition: background-color 0.05s;
+  }
+  .btn-solid:hover { background: var(--c-fg-dim); border-color: var(--c-fg-dim); }
+  .btn-solid:active { transform: translateY(1px); }
+  .btn-solid:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Alias .field → same as .input */
+  .field {
+    width: 100%;
+    padding: 0.4em 1ch;
+    background: var(--c-card);
+    border: 1px solid var(--c-border);
+    color: var(--c-fg);
+    font-family: "Courier New", monospace;
+  }
+  .field::placeholder { color: var(--c-muted); }
+  .field:focus { border-color: var(--c-fg); background-color: var(--c-bg); }
+
+  /* ---------- Inputs ---------- */
+  .input {
+    width: 100%;
+    padding: 0.4em 1ch;
+    background: var(--c-card);
+    border: 1px solid var(--c-border);
+    color: var(--c-fg);
+    font-family: "Courier New", monospace;
+  }
+  .input::placeholder { color: var(--c-muted); }
+  .input:focus { border-color: var(--c-fg); background-color: var(--c-bg); }
+
+  /* ---------- Text helpers ---------- */
+  .glow { text-shadow: 0 0 var(--glow-blur, 6px) var(--c-fg); }
+  .dim  { color: var(--c-fg-dim); }
+  .muted { color: var(--c-muted); }
+  .warn { color: var(--c-warn); }
+  .danger { color: var(--c-danger); }
+  .info { color: var(--c-info); }
+
+  /* ---------- Block cursor / typewriter caret ---------- */
+  .cursor::after {
+    content: "█";
+    color: var(--c-fg);
+    animation: cursor-blink 0.8s steps(2, start) infinite;
+    margin-left: 0.1ch;
+  }
+  .caret-inline::after {
+    content: "█";
+    display: inline-block;
+    color: var(--c-fg);
+    animation: cursor-blink 0.8s steps(2, start) infinite;
+    margin-left: 0.05ch;
+  }
+
+  /* ---------- Instant inversion on hover (no transition) ---------- */
+  .invert-hover {
+    transition: none !important;
+  }
+  .invert-hover:hover,
+  .invert-hover.is-active {
+    background-color: var(--c-fg) !important;
+    color: var(--c-bg) !important;
+  }
+  .invert-hover:hover *,
+  .invert-hover.is-active * {
+    color: var(--c-bg) !important;
+    text-shadow: none !important;
+    background-color: transparent !important;
+    border-color: var(--c-bg) !important;
+  }
+
+  /* ---------- Online indicator: blinking phosphor dot ---------- */
+  .pulse-dot {
+    animation: cursor-blink 1.4s steps(2, start) infinite;
+  }
+
+  /* ---------- Unread badge: slow blink ---------- */
+  .unread-blink {
+    animation: cursor-blink 1.6s steps(2, start) infinite;
+  }
+
+  /* ---------- Typewriter reveal for list rows ---------- */
+  .ticker-in {
+    overflow: hidden;
+    animation: ticker-in 0.25s steps(20) both;
+  }
+}
+
+@keyframes ticker-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   MESSAGE BUBBLE — single-line ┌─┐ box with overlaid label
+   ───────────────────────────────────────────────────────── */
+.msg-box {
+  position: relative;
+  border: 1px solid var(--c-fg);
+  background-color: var(--c-bg);
+  padding: 0.85em 1.2ch 0.55em;
+  margin: 0.4em 0;
+  max-width: min(72ch, 80%);
+}
+.msg-box.is-own { margin-left: auto; }
+.msg-box .corner-glyph {
+  position: absolute;
+  color: var(--c-fg);
+  background: var(--c-bg);
+  padding: 0 1px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  z-index: 2;
+}
+.msg-box .corner-glyph.tl { top: -0.55em; left: -0.3ch; }
+.msg-box .corner-glyph.tr { top: -0.55em; right: -0.3ch; }
+.msg-box .corner-glyph.bl { bottom: -0.55em; left: -0.3ch; }
+.msg-box .corner-glyph.br { bottom: -0.55em; right: -0.3ch; }
+
+.msg-label {
+  position: absolute;
+  top: -0.7em;
+  left: 0.7ch;
+  background: var(--c-bg);
+  padding: 0 0.2ch;
+  color: var(--c-fg);
+  font-size: 0.85em;
+  white-space: nowrap;
+  line-height: 1;
+  z-index: 1;
+}
+
+.msg-status {
+  position: absolute;
+  bottom: -0.7em;
+  right: 0.7ch;
+  background: var(--c-bg);
+  padding: 0 0.2ch;
+  font-size: 0.78em;
+  line-height: 1;
+  color: var(--c-fg-dim);
+  z-index: 1;
+}
+.msg-status.is-read { color: var(--c-fg); text-shadow: 0 0 4px var(--c-fg); }
+
+/* ─────────────────────────────────────────────────────────
+   DOUBLE-LINE BOX — for chat header & input bar
+   ───────────────────────────────────────────────────────── */
+.dbl-box {
+  position: relative;
+  border: 3px double var(--c-fg);
+  background-color: var(--c-bg);
+}
+.dbl-box .corner-glyph {
+  position: absolute;
+  color: var(--c-fg);
+  background: var(--c-bg);
+  padding: 0 2px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  z-index: 2;
+}
+.dbl-box .corner-glyph.tl { top: -0.6em; left: -0.4ch; }
+.dbl-box .corner-glyph.tr { top: -0.6em; right: -0.4ch; }
+.dbl-box .corner-glyph.bl { bottom: -0.6em; left: -0.4ch; }
+.dbl-box .corner-glyph.br { bottom: -0.6em; right: -0.4ch; }
+
+/* Typewriter reveal for newly-arrived message bodies */
+@keyframes type-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+.type-reveal {
+  animation: type-reveal 0.6s steps(80) both;
+}
+
+/* Fade-in status badge (when [SENT] → [DELIVERED] → [READ]) */
+@keyframes status-flash {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+.status-flash { animation: status-flash 0.18s 1; }
+
+/* ─────────────────────────────────────────────────────────
+   CALL TERMINAL FRAME UNFOLD ANIMATION
+   ───────────────────────────────────────────────────────── */
+@keyframes corner-pop {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes line-scale-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes line-scale-y {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.call-frame { position: relative; }
+.call-frame > .cf-corner {
+  position: absolute;
+  color: var(--c-fg);
+  font-size: 1.5em;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0;
+  animation: corner-pop 0.18s ease-out both;
+  text-shadow: 0 0 8px var(--c-fg);
+}
+.call-frame > .cf-corner.tl { top: 0; left: 0; }
+.call-frame > .cf-corner.tr { top: 0; right: 0; }
+.call-frame > .cf-corner.bl { bottom: 0; left: 0; }
+.call-frame > .cf-corner.br { bottom: 0; right: 0; }
+
+.call-frame > .cf-line {
+  position: absolute;
+  background-color: var(--c-fg);
+  box-shadow: 0 0 4px var(--c-fg);
+  opacity: 0;
+}
+.call-frame > .cf-line.top {
+  top: 0.5em; left: 1.2em; right: 1.2em; height: 2px;
+  transform-origin: left;
+  animation: line-scale-x 0.35s ease-out 0.22s both, fade-in 0.05s linear 0.22s both;
+}
+.call-frame > .cf-line.bottom {
+  bottom: 0.5em; left: 1.2em; right: 1.2em; height: 2px;
+  transform-origin: right;
+  animation: line-scale-x 0.35s ease-out 0.22s both, fade-in 0.05s linear 0.22s both;
+}
+.call-frame > .cf-line.left {
+  top: 1.2em; bottom: 1.2em; left: 0.5em; width: 2px;
+  transform-origin: top;
+  animation: line-scale-y 0.4s ease-out 0.55s both, fade-in 0.05s linear 0.55s both;
+}
+.call-frame > .cf-line.right {
+  top: 1.2em; bottom: 1.2em; right: 0.5em; width: 2px;
+  transform-origin: bottom;
+  animation: line-scale-y 0.4s ease-out 0.55s both, fade-in 0.05s linear 0.55s both;
+}
+.call-frame > .cf-content {
+  opacity: 0;
+  animation: fade-in 0.4s linear 0.95s both;
+}
+
+/* End-call: schwap-out collapse to center */
+@keyframes call-collapse-x {
+  from { clip-path: inset(0 0 0 0); }
+  to   { clip-path: inset(50% 50% 50% 50%); }
+}
+.call-collapsing {
+  animation: call-collapse-x 0.45s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+.call-collapsing > * {
+  animation: fade-in 0.45s reverse forwards;
+}
+
+/* ============================================================
+   UTILITIES — scrollbars, scanline, matrix bg
+   ============================================================ */
+@layer utilities {
+  /* Scrollbars */
+  .scrollbar-thin::-webkit-scrollbar      { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-track{ background: var(--c-bg); }
+  .scrollbar-thin::-webkit-scrollbar-thumb{ background: var(--c-accent); border: 1px solid var(--c-fg-dim); }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover{ background: var(--c-fg-dim); }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { scrollbar-width: none; }
+
+  /* ── Terminal scrollbar — looks like a ▐▌ column of character cells ── */
+  .tty-scroll::-webkit-scrollbar { width: 14px; }
+  .tty-scroll::-webkit-scrollbar-track {
+    background-color: var(--c-bg);
+    background-image:
+      linear-gradient(to right, var(--c-fg-dim) 0, var(--c-fg-dim) 1px, transparent 1px),
+      linear-gradient(to left,  var(--c-fg-dim) 0, var(--c-fg-dim) 1px, transparent 1px);
+    background-size: 4px 100%, 4px 100%;
+    background-position: 3px 0, calc(100% - 3px) 0;
+    background-repeat: repeat-y;
+  }
+  .tty-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--c-fg);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 14px,
+      rgba(0, 0, 0, 0.45) 14px,
+      rgba(0, 0, 0, 0.45) 16px
+    );
+    border-left:  3px solid var(--c-bg);
+    border-right: 3px solid var(--c-bg);
+  }
+  .tty-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--c-fg-dim);
+  }
+
+  /* No font ligatures (Courier won't really have them anyway, but…) */
+  .no-liga {
+    font-variant-ligatures: none;
+    font-feature-settings: 'liga' 0;
+  }
+
+  /* Tabular numbers for clean alignment */
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* ============================================================
+   GLOBAL OVERLAYS — scanline + vignette (CRT effect)
+   ============================================================ */
+/* The scanline bar that moves top→bottom on top of EVERYTHING */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--c-fg) 50%,
+    transparent 100%
+  );
+  height: 6vh;
+  opacity: 0.03;
+  animation: scanline 6s linear infinite;
+  mix-blend-mode: screen;
+}
+
+/* Subtle scanlines pattern overlay + vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.10) 3px,
+      transparent 4px
+    ),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* ============================================================
+   GLOBAL KEYFRAMES (also exposed via tailwind anims)
+   ============================================================ */
+@keyframes cursor-blink {
+  0%, 50%  { opacity: 1; }
+  51%, 100%{ opacity: 0; }
+}
+
+@keyframes scanline {
+  0%   { transform: translateY(-10vh); }
+  100% { transform: translateY(110vh); }
+}
+
+@keyframes crt-flicker {
+  0%, 96%, 100% { filter: brightness(0.96)   contrast(1.05); }
+  97%           { filter: brightness(0.89)   contrast(1.08); }
+  98%           { filter: brightness(1.02)   contrast(1.02); }
+  99%           { filter: brightness(0.93)   contrast(1.06); }
+}
+
+/* ============================================================
+   TOAST NOTIFICATIONS — ASCII frame with typewriter reveal
+   ============================================================ */
+.toast-container {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  position: relative;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--toast-color, var(--c-fg));
+  background: var(--c-bg);
+  padding: 1.2em 1.5ch;
+  min-width: 320px;
+  max-width: 420px;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  transform-origin: right center;
+}
+
+/* Corners */
+.toast-corner {
+  position: absolute;
+  color: var(--toast-color, var(--c-fg));
+  background: var(--c-bg);
+  font-size: 1.1em;
+  line-height: 1;
+  padding: 0 1px;
+  pointer-events: none;
+  z-index: 2;
+}
+.toast-corner.tl { top: -0.55em; left: -0.3ch; }
+.toast-corner.tr { top: -0.55em; right: -0.3ch; }
+.toast-corner.bl { bottom: -0.55em; left: -0.3ch; }
+.toast-corner.br { bottom: -0.55em; right: -0.3ch; }
+
+/* ERROR corners blink */
+.toast-corner-blink {
+  animation: cursor-blink 0.6s steps(2, start) infinite;
+}
+
+/* Borders */
+.toast-border-top {
+  position: absolute;
+  top: 0;
+  left: 1ch;
+  right: 1ch;
+  color: var(--toast-color, var(--c-fg));
+  font-size: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.toast-border-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 1ch;
+  right: 1ch;
+  color: var(--toast-color, var(--c-fg));
+  font-size: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.toast-border-left,
+.toast-border-right {
+  position: absolute;
+  top: 0.6em;
+  bottom: 0.6em;
+  color: var(--toast-color, var(--c-fg));
+  font-size: 1em;
+  line-height: 1.3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.toast-border-left { left: 0; }
+.toast-border-right { right: 0; }
+
+/* Content */
+.toast-content {
+  position: relative;
+  z-index: 1;
+  min-height: 3em;
+}
+
+.toast-text {
+  margin: 0;
+  padding: 0;
+  color: var(--toast-color, var(--c-fg));
+  font-family: "Courier New", monospace;
+  font-size: 1em;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Entrance animation: expand from right */
+@keyframes toast-expand {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+.toast-entering {
+  animation: toast-expand 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Exit animation: collapse to right */
+@keyframes toast-collapse {
+  from { transform: scaleX(1); opacity: 1; }
+  to   { transform: scaleX(0); opacity: 0; }
+}
+
+.toast-exiting {
+  animation: toast-collapse 0.2s ease-in both;
+}
+
+/* ============================================================
+   STATUS BAR — vim/terminal status line at bottom
+   ============================================================ */
+.statusbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: var(--c-bg);
+  border-top: 1px solid var(--c-fg-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.5ch;
+  padding: 0 1ch;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--c-fg-dim);
+  z-index: 50;
+  user-select: none;
+}
+
+.statusbar-block {
+  background: transparent;
+  border: none;
+  color: var(--c-fg-dim);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.1s;
+  white-space: nowrap;
+}
+
+.statusbar-block:hover {
+  color: var(--c-fg);
+}
+
+.statusbar-ok {
+  color: var(--c-fg);
+}
+
+.statusbar-error {
+  color: var(--c-danger);
+}
+
+.statusbar-warn {
+  color: var(--c-warn);
+}
+
+/* Pulse animation for ONLINE indicator */
+.statusbar-pulse {
+  animation: statusbar-pulse 3s ease-in-out infinite;
+}
+
+@keyframes statusbar-pulse {
+  0%, 95%, 100% { opacity: 1; }
+  97.5% { opacity: 0.4; }
+}
+
+/* Highlight on value change */
+.statusbar-highlight {
+  animation: statusbar-invert 0.2s 1;
+}
+
+@keyframes statusbar-invert {
+  0%, 100% {
+    background: transparent;
+    color: var(--c-fg-dim);
+  }
+  50% {
+    background: var(--c-fg);
+    color: var(--c-bg);
+  }
+}
+
+/* Popup details */
+.statusbar-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 1rem;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.statusbar-popup-content {
+  background: var(--c-bg);
+  border: 1px solid var(--c-fg);
+  padding: 0.8em 1.2ch;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--c-fg);
+  min-width: 280px;
+  max-width: 400px;
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.statusbar-popup-title {
+  color: var(--c-fg);
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  text-shadow: 0 0 6px var(--c-fg);
+}
+
+.statusbar-popup-body {
+  color: var(--c-fg-dim);
+  margin: 0.5em 0;
+}
+
+.statusbar-popup-body > div {
+  margin: 0.3em 0;
+}
+
+.statusbar-popup-footer {
+  color: var(--c-fg);
+  margin-top: 0.5em;
+}
+
+/* ============================================================
+   SCREEN TRANSITIONS — wipe / terminal-clear / glitch
+   Driven by transitionStore + <ScreenTransition />.
+   Sits under the global CRT scanline (z 9998) so it still
+   gets swept by the phosphor bar.
+   ============================================================ */
+.st-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.st-pre {
+  margin: 0;
+  font-family: "Courier New", "Courier", monospace;
+  font-size: 14px;
+  line-height: 16px;
+  white-space: pre;
+  color: var(--c-fg);
+  text-shadow: 0 0 6px var(--c-fg);
+  user-select: none;
+}
+
+/* ── WIPE ── block rows grow from the left, then collapse right ── */
+.st-wipe-cover,
+.st-wipe-reveal {
+  background-color: var(--c-bg);
+  will-change: transform;
+  animation-fill-mode: forwards;
+  animation-timing-function: steps(24, end);
+}
+.st-wipe-cover {
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation-name: st-wipe-in;
+}
+.st-wipe-reveal {
+  transform-origin: right center;
+  transform: scaleX(1);
+  animation-name: st-wipe-out;
+}
+@keyframes st-wipe-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes st-wipe-out {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* ── TERMINAL CLEAR ── junk scrolls in, then scrolls off the top ── */
+.st-clear-cover,
+.st-clear-reveal {
+  position: absolute;
+  inset: 0;
+  background-color: var(--c-bg);
+  color: var(--c-fg-dim);
+  text-shadow: none;
+  will-change: transform;
+  animation-fill-mode: forwards;
+}
+.st-clear-cover {
+  animation: st-clear-in 170ms steps(8, end) both;
+}
+.st-clear-reveal {
+  animation: st-clear-out 160ms steps(10, end) forwards;
+}
+@keyframes st-clear-in {
+  from { transform: translateY(-14px); opacity: 0.35; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+@keyframes st-clear-out {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-101vh); }
+}
+
+/* ── GLITCH ── dense █▓ noise replaces content, hard-cuts away ── */
+.st-glitch {
+  position: absolute;
+  inset: 0;
+  background-color: transparent;
+  color: var(--c-fg);
+  text-shadow: 0 0 4px var(--c-fg), 1px 0 2px var(--c-danger);
+  animation: st-glitch-flick 60ms steps(2, end) infinite;
+  will-change: transform, opacity;
+}
+@keyframes st-glitch-flick {
+  0%   { opacity: 1;   }
+  50%  { opacity: 0.72; }
+  100% { opacity: 1;   }
+}
+
+/* ============================================================
+   SETTINGS — live toggles for the CRT overlays
+   (driven by settingsStore.applyEffects)
+   ============================================================ */
+html[data-scanlines="off"] body::before,
+html[data-scanlines="off"] body::after {
+  display: none !important;
+}
+html[data-crt="off"] #root {
+  animation: none !important;
+}
+
+
