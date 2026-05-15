@@ -243,7 +243,7 @@ function ActiveCallView({
       </div>
 
       {/* MAIN — remote (big) + local (small) */}
-      <div className="dbl-box flex-1 min-h-0 grid grid-cols-[1fr_240px] gap-0 relative">
+      <div className="dbl-box flex-1 min-h-0 grid grid-cols-[1fr_280px] gap-0 relative">
         <span className="corner-glyph tl">╠</span>
         <span className="corner-glyph tr">╣</span>
         <span className="corner-glyph bl">╠</span>
@@ -263,8 +263,8 @@ function ActiveCallView({
             <AsciiVideo
               stream={remoteStream}
               mode={renderMode}
-              cols={renderMode === 'braille' ? 130 : 110}
-              rows={renderMode === 'braille' ? 50 : 42}
+              cols={renderMode === 'braille' ? 180 : 150}
+              rows={renderMode === 'braille' ? 70 : 58}
               fps={renderMode === 'color' ? 12 : 18}
               glitchProbability={glitch}
             />
@@ -288,14 +288,14 @@ function ActiveCallView({
         </div>
 
         {/* LOCAL PREVIEW */}
-        <div className="relative flex flex-col p-2">
+        <div className="relative flex flex-col p-2 overflow-hidden">
           <div className="text-fg-dim text-[10px] tracking-widest mb-1">─ LOCAL PREVIEW ─</div>
           {callType === 'video' && localStream && isVideoEnabled ? (
             <AsciiVideo
               stream={localStream}
               mode={renderMode}
-              cols={renderMode === 'braille' ? 56 : 48}
-              rows={renderMode === 'braille' ? 32 : 24}
+              cols={renderMode === 'braille' ? 64 : 54}
+              rows={renderMode === 'braille' ? 36 : 30}
               fps={renderMode === 'color' ? 8 : 12}
               mirrored
               glitchProbability={glitch}
