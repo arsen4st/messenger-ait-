@@ -1,20 +1,25 @@
-// Real-time ASCII video renderer with 4 modes:
-//   'grayscale' — luminance → char ramp, all-phosphor color
-//   'color'     — luminance → char ramp, char tinted by pixel RGB
-//   'matrix'    — chars replaced by Japanese katakana, phosphor color
-//   'braille'   — each cell is a 2×4 braille block (8 dots), higher detail
-//
-// Plus: a `glitchProbability` prop swaps random chars to █ each frame.
+// Enhanced real-time ASCII video renderer inspired by glyphcast
+// Modes: 'grayscale' | 'color' | 'matrix' | 'braille' | 'blocks' | 'binary'
+// Features: adaptive brightness, contrast boost, better charset ramps
 
 import { useEffect, useRef } from 'react';
 
-// Ramp per the spec — 10 buckets covering 0..255
-const SPEC_RAMP = ' .,:;+=?#%@';   // 11 chars, 10 levels of density
-const MATRIX_RAMP = ' .ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ';
+// Enhanced charset ramps from glyphcast
+const CHARSETS = {
+  standard: ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$',
+  matrix: ' .ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ',
+  blocks: ' ░▒▓█',
+  binary: ' 01',
+  simple: ' .,:;+=?#%@',
+};
 
-function pickRampChar(lum, ramp) {
-  const idx = Math.min(ramp.length - 1, Math.max(0, Math.round((lum / 255) * (ramp.length - 1))));
-  return ramp[idx];
+function pickChar(lum, charset, contrast = 1.0) {
+  // Apply contrast boost
+  let adjusted = ((lum / 255 - 0.5) * contrast + 0.5) * 255;
+  adjusted = Math.max(0, Math.min(255, adjusted));
+
+  const idx = Math.floor((adjusted / 255) * (charset.length - 1));
+  return charset[Math.max(0, Math.min(charset.length - 1, idx))];
 }
 
 function escapeHtml(ch) {
@@ -24,14 +29,20 @@ function escapeHtml(ch) {
   return ch;
 }
 
+// Calculate luminance using BT.709 (better for modern displays)
+function getLuminance(r, g, b) {
+  return r * 0.2126 + g * 0.7152 + b * 0.0722;
+}
+
 function AsciiVideo({
   stream,
-  mode = 'grayscale',          // 'grayscale' | 'color' | 'matrix' | 'braille'
+  mode = 'grayscale',
   cols = 100,
   rows = 38,
   fps = 18,
   mirrored = false,
   glitchProbability = 0,
+  contrast = 1.2,              // NEW: contrast boost (1.0 = none, 1.5 = high)
   className = '',
   style,
 }) {
@@ -51,6 +62,17 @@ function AsciiVideo({
 
     v.srcObject = stream;
     v.play().catch(() => {});
+
+    // Select charset based on mode
+    let charset;
+    switch (mode) {
+      case 'matrix': charset = CHARSETS.matrix; break;
+      case 'blocks': charset = CHARSETS.blocks; break;
+      case 'binary': charset = CHARSETS.binary; break;
+      case 'color':
+      case 'grayscale':
+      default: charset = CHARSETS.standard; break;
+    }
 
     // For braille we need 2× width / 4× height pixels per output char
     const sampleW = mode === 'braille' ? cols * 2 : cols;
@@ -79,15 +101,11 @@ function AsciiVideo({
       let html = '';
 
       if (mode === 'braille') {
-        // Threshold-based braille. Bit positions inside 2×4 block:
-        //   dot1=0x01 dot4=0x08
-        //   dot2=0x02 dot5=0x10
-        //   dot3=0x04 dot6=0x20
-        //   dot7=0x40 dot8=0x80
+        // Braille mode with improved threshold
         const DOT = [
           [0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80],
         ];
-        const threshold = 110;
+        const threshold = 128; // Improved from 110
         for (let by = 0; by < rows; by++) {
           for (let bx = 0; bx < cols; bx++) {
             let bits = 0;
@@ -96,7 +114,7 @@ function AsciiVideo({
                 const px = bx * 2 + dx;
                 const py = by * 4 + dy;
                 const i = (py * sampleW + px) * 4;
-                const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                const lum = getLuminance(data[i], data[i + 1], data[i + 2]);
                 if (lum > threshold) bits |= DOT[dy][dx];
               }
             }
@@ -106,40 +124,43 @@ function AsciiVideo({
           }
           html += '\n';
         }
-        pre.textContent = html;          // braille is plain text, fast path
+        pre.textContent = html;
         return;
       }
 
-      // grayscale / color / matrix all read pixel-per-cell from the same buffer
-      const ramp = mode === 'matrix' ? MATRIX_RAMP : SPEC_RAMP;
+      // Enhanced rendering for all other modes
       const useColor = mode === 'color';
 
       if (useColor) {
-        // build HTML once
+        // Color mode with improved brightness handling
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < cols; x++) {
             const i = (y * cols + x) * 4;
             const r = data[i], g = data[i + 1], b = data[i + 2];
-            const lum = r * 0.299 + g * 0.587 + b * 0.114;
-            let ch = pickRampChar(lum, ramp);
+            const lum = getLuminance(r, g, b);
+
+            let ch = pickChar(lum, charset, contrast);
             if (glitchProbability > 0 && Math.random() < glitchProbability) ch = '█';
-            // Brighten low-light pixels so they remain visible
-            const boost = lum < 40 ? 1.6 : 1.0;
+
+            // Adaptive brightness boost for dark pixels
+            const boost = lum < 60 ? 1.8 : lum < 120 ? 1.3 : 1.0;
             const rr = Math.min(255, Math.round(r * boost));
             const gg = Math.min(255, Math.round(g * boost));
             const bb = Math.min(255, Math.round(b * boost));
+
             html += `<span style="color:rgb(${rr},${gg},${bb})">${escapeHtml(ch)}</span>`;
           }
           html += '\n';
         }
         pre.innerHTML = html;
       } else {
-        // grayscale or matrix — plain textContent (much faster)
+        // Grayscale/matrix/blocks/binary — plain text (faster)
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < cols; x++) {
             const i = (y * cols + x) * 4;
-            const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-            let ch = pickRampChar(lum, ramp);
+            const lum = getLuminance(data[i], data[i + 1], data[i + 2]);
+
+            let ch = pickChar(lum, charset, contrast);
             if (glitchProbability > 0 && Math.random() < glitchProbability) ch = '█';
             html += ch;
           }
@@ -154,7 +175,7 @@ function AsciiVideo({
       clearInterval(intervalId);
       v.srcObject = null;
     };
-  }, [stream, mode, cols, rows, fps, mirrored, glitchProbability]);
+  }, [stream, mode, cols, rows, fps, mirrored, glitchProbability, contrast]);
 
   return (
     <div className={`relative ${className}`} style={style}>

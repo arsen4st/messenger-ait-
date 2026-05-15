@@ -13,6 +13,8 @@ const MODES = [
   { key: 'c', id: 'color',     label: 'COLOR' },
   { key: 'm', id: 'matrix',    label: 'MTRX' },
   { key: 'b', id: 'braille',   label: 'BRLE' },
+  { key: 'k', id: 'blocks',    label: 'BLCK' },
+  { key: 'n', id: 'binary',    label: 'BIN' },
 ];
 
 function CallModal({
@@ -105,6 +107,8 @@ function CallModal({
       else if (k === 'c') { e.preventDefault(); setRenderMode('color'); }
       else if (k === 'm') { e.preventDefault(); setRenderMode('matrix'); }
       else if (k === 'b') { e.preventDefault(); setRenderMode('braille'); }
+      else if (k === 'k') { e.preventDefault(); setRenderMode('blocks'); }
+      else if (k === 'n') { e.preventDefault(); setRenderMode('binary'); }
       else if (e.key === 'F1') { e.preventDefault(); toggleMute(); }
       else if (e.key === 'F2') { e.preventDefault(); toggleVideo(); }
       else if (e.key === 'F10') { e.preventDefault(); handleEnd(); }
@@ -368,7 +372,7 @@ function ActiveCallView({
             [F3] SHARE
           </button>
           <span className="text-fg-dim text-[10px] ml-2">
-            [G/C/M/B] = MODE · [F1]=MIC · [F2]=CAM · [F10]=END
+            [G/C/M/B/K/N] = MODE · [F1]=MIC · [F2]=CAM · [F10]=END
           </span>
           <button
             onClick={onEnd}
